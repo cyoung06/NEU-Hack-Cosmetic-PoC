@@ -1,12 +1,9 @@
 package kr.minecheat.mcauth.netty;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import kr.minecheat.mcauth.handler.LoginHandler;
-import kr.minecheat.mcauth.handler.PlayHandler;
 import kr.minecheat.mcauth.handler.ServerPingHandler;
 import kr.minecheat.mcauth.mcdata.Chat;
 import kr.minecheat.mcauth.mcdata.UserData;
@@ -14,7 +11,6 @@ import kr.minecheat.mcauth.packets.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.GeneralSecurityException;
 
@@ -24,29 +20,17 @@ public class MinecraftPacketHandler extends SimpleChannelInboundHandler<PacketHe
 
     private ServerPingHandler pingHandler = new ServerPingHandler(this);
     private LoginHandler loginHandler = new LoginHandler(this);
-    private PlayHandler playHandler = new PlayHandler(this);
 
     @Getter
     private PacketState currentState = PacketState.STATUS;
 
     public void setCurrentState(PacketState state) {
         this.currentState = state;
-        if (currentState == PacketState.PLAY) {
-            try {
-                playHandler.initiate();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) {
         handlerContext = ctx;
-    }
-    @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
-        playHandler.cancelKeepAlive();
     }
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, PacketHeader packetHeader) throws Exception {
@@ -58,14 +42,11 @@ public class MinecraftPacketHandler extends SimpleChannelInboundHandler<PacketHe
         if (currentState != PacketState.PLAY && pd.getPacketState() == PacketState.LOGIN || pd instanceof PacketStatus00ServerListPing && ((PacketStatus00ServerListPing) pd).getNextState() == 2) {
             loginHandler.handlePacket(packetHeader);
         }
-        if (currentState == PacketState.PLAY) {
-            playHandler.handlePacket(packetHeader);
-        }
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-        disconnect("서버에서 에러가 발생하였습니다");
+        disconnect(cause.toString());
         cause.printStackTrace();
         ctx.close();
     }
@@ -98,7 +79,6 @@ public class MinecraftPacketHandler extends SimpleChannelInboundHandler<PacketHe
             handlerContext.channel().writeAndFlush(pHeader).addListener((future) -> {
                 Thread.sleep(500);
                 handlerContext.close();
-                playHandler.cancelKeepAlive();
             });
         } catch (Exception e) {
             e.printStackTrace();

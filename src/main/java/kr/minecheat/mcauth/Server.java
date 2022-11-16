@@ -38,8 +38,6 @@ public class Server {
     private static final Timer keepAlivetimer = new Timer();
     @Getter
     private static final Random random = new Random();
-    @Getter
-    private static HikariDataSource dataSource;
 
     @Getter
     private static KeyPair serverKeys;
@@ -50,8 +48,6 @@ public class Server {
     public Server(int port) throws NoSuchAlgorithmException {
         this.port = port;
         serverKeys = EncryptionUtils.generate1024RSAKey();
-        HikariConfig config = new HikariConfig(System.getProperty("config", "/etc/minecheat_mcauth/hikariConfig.properties"));
-        dataSource = new HikariDataSource(config);
     }
 
     public void run() throws Exception {

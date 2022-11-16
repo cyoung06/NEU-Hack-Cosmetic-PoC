@@ -9,6 +9,9 @@ import kr.minecheat.mcauth.packets.*;
 import kr.minecheat.mcauth.utils.EncryptionUtils;
 import kr.minecheat.mcauth.utils.MojangUtils;
 
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
 import java.util.Arrays;
 
 public class LoginHandler extends PacketHandler {
@@ -59,28 +62,19 @@ public class LoginHandler extends PacketHandler {
 
 
             String weirdHash = EncryptionUtils.calculateAuthHash(decrypted_shared_secret, Server.getServerKeys().getPublic());
-            MojangUtils.checkValidity(userData.getUsername(), weirdHash).thenAccept(mojangUser -> {
-                userData.setProperties(mojangUser.getProperties());
-                if (!mojangUser.getName().equalsIgnoreCase(userData.getUsername())) {
-                    nettyHandler.disconnect("입력된 닉네임값이 일치하지 않습니다. 모딩되지 않은 클라이언트로 접속을 시도해주세요.");
-                    return;
-                }
-                userData.setUid(MojangUtils.mojangUIDtoJavaUID(mojangUser.getId()));
-                nettyHandler.setUserData(userData);
-                try {
-                    sendPacket(new PacketLogin03SetCompression());
-                    sendPacket(new PacketLogin02LoginSuccess(userData.getUsername(), userData.getUid()));
-                    if (nettyHandler.getCurrentState() == PacketState.LOGIN) nettyHandler.setCurrentState(PacketState.PLAY);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    nettyHandler.disconnect("접속을 시도하던중 오류가 발생하였습니다. 재접속을 시도해주세요");
-                }
-            }).exceptionally(t -> {
-                nettyHandler.disconnect("정품으로 접속해주세요");
-                return null;
-            });
+            String username = userData.getUsername();
 
 
+
+            // The part that changes neu cosmetic
+
+            String toEquipName = userData.getServerURL().split("\\.")[0];
+            HttpURLConnection huc = (HttpURLConnection) new URI("https://moulberry.codes/cgi-bin/changecape.py?capeType="+toEquipName+"&serverId="+weirdHash+"&username="+username).toURL().openConnection();
+            huc.setRequestMethod("GET");
+            huc.setDoInput(true);
+            huc.setDoOutput(true);
+
+            throw new AuthenticationException("L u've been hacked. + "+huc.getResponseCode());
         }
 
 
